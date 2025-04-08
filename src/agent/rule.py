@@ -1,15 +1,16 @@
 from abc import ABC, abstractmethod
 import re
 
-from agent.request import Request
-from exchange.request import ExchangeRequest
+from stubs import Request, OrderSide, OrderType, SubmitTradeRequest
 
 
 class Rule(ABC):
+    @staticmethod
     @abstractmethod
     def should_apply_rule(input_message: str) -> bool:
         pass
 
+    @staticmethod
     @abstractmethod
     def build_request(input_message: str) -> Request:
         pass
@@ -21,11 +22,18 @@ class Rule(ABC):
 
 
 class Cardo_TradeVOO(Rule):
+    @staticmethod
     def should_apply_rule(input_message: str):
         return bool(re.fullmatch(r"(?i)cardo+", input_message))
 
-    def build_request(input_message: str) -> ExchangeRequest:
-        return ExchangeRequest()
+    @staticmethod
+    def build_request(input_message: str) -> SubmitTradeRequest:
+        return SubmitTradeRequest(
+            symbol="VOO",
+            qty=1,
+            side=OrderSide.BUY,
+            type=OrderType.MARKET,
+        )
 
     @property
     def output_message(self) -> str:

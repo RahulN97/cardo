@@ -2,7 +2,6 @@ from config.app_config import AppConfig
 from agent.broker import Broker
 from interface.messenger import Messenger
 from exchange.client import ExchangeClient
-from portfolio.ledger import Ledger
 from parser.message_parser import MessageParser
 
 
@@ -20,13 +19,11 @@ def initialize_broker(config: AppConfig) -> Broker:
         api_key=config.alpaca_api_key,
         api_secret=config.alpaca_api_secret,
     )
-    ledger: Ledger = Ledger()
     return Broker(
         name=config.broker_name,
         messenger=messenger,
         parser=parser,
         exchange=exchange,
-        ledger=ledger,
     )
 
 

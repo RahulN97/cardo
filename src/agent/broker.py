@@ -1,10 +1,12 @@
-from agent.request import Request, NoRequest
-from exchange.request import ExchangeRequest
-from portfolio.request import PortfolioRequest
+from stubs import (
+    Request,
+    NoRequest,
+    SubmitTradeRequest,
+    SubmitTradeResponse,
+)
 from parser.message_parser import MessageParser
 from interface.messenger import Messenger
 from exchange.client import ExchangeClient
-from portfolio.ledger import Ledger
 
 
 class Broker:
@@ -14,24 +16,26 @@ class Broker:
         messenger: Messenger,
         parser: MessageParser,
         exchange: ExchangeClient,
-        ledger: Ledger,
     ) -> None:
         self.name: str = name
         self.messenger: Messenger = messenger
         self.parser: MessageParser = parser
         self.exchange: ExchangeClient = exchange
-        self.ledger: Ledger = ledger
+
+    @staticmethod
+    def _join_messages(*messages) -> str:
+        return " ".join([m for m in messages if m is not None])
 
     def _process_request(self, request: Request, output_text: str | None) -> str | None:
         match request:
             case NoRequest():
                 return output_text
-            case ExchangeRequest():
-                self.exchange.handle_request(request)
-                return output_text
-            case PortfolioRequest():
-                self.ledger.handle_request(request)
-                return output_text
+            case SubmitTradeRequest():
+                trade_resp: SubmitTradeResponse = self.exchange.submit_trade(request)
+                # port_resp: DisplayPortfolioResponse = self.ledger.handle_request(
+                #     request=SaveOrderRequest()
+                # )
+                return self._join_messages(output_text, trade_resp.message)
             case _:
                 raise NotImplementedError(f"Cannot handle request: {type(request)}")
 

@@ -1,5 +1,5 @@
 from agent.profiles import PROFILE_TO_RULES, Rule
-from agent.request import Request, NoRequest
+from stubs import Request, NoRequest
 
 
 class MessageParser:
