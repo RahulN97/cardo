@@ -1,5 +1,5 @@
 from agent.profiles import PROFILE_TO_RULES, Rule
-from stubs import Request, NoRequest
+from stubs import Request, NullRequest
 
 
 class MessageParser:
@@ -10,4 +10,4 @@ class MessageParser:
         for rule in self.rules:
             if rule.should_apply_rule(input_message):
                 return rule.build_request(input_message), rule.output_message
-        return NoRequest(), None
+        return NullRequest(), None

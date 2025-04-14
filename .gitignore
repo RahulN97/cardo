@@ -1,3 +1,4 @@
 cardo-env/
 .env
 __pycache__/
+localtest*

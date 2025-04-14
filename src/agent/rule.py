@@ -8,16 +8,25 @@ class Rule(ABC):
     @staticmethod
     @abstractmethod
     def should_apply_rule(input_message: str) -> bool:
+        """
+        Determines whether or not input message matches this rule
+        """
         pass
 
     @staticmethod
     @abstractmethod
     def build_request(input_message: str) -> Request:
+        """
+        Transforms input message into an actionable request for the herder
+        """
         pass
 
     @property
     @abstractmethod
-    def output_message(self) -> str:
+    def output_message(self) -> str | None:
+        """
+        Optional static message this rule always returns
+        """
         pass
 
 

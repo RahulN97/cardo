@@ -1,7 +1,7 @@
 from config.app_config import AppConfig
 from agent.broker import Broker
-from interface.messenger import Messenger
-from exchange.client import ExchangeClient
+from fox.messenger import Messenger
+from alpaca.herder import AlpacaHerder
 from parser.message_parser import MessageParser
 
 
@@ -13,7 +13,7 @@ def initialize_broker(config: AppConfig) -> Broker:
         lag=config.messenger_lag,
     )
     parser: MessageParser = MessageParser(broker_name=config.broker_name)
-    exchange: ExchangeClient = ExchangeClient(
+    herder: AlpacaHerder = AlpacaHerder(
         broker_name=config.broker_name,
         base_url=config.alpaca_base_url,
         api_key=config.alpaca_api_key,
@@ -23,7 +23,7 @@ def initialize_broker(config: AppConfig) -> Broker:
         name=config.broker_name,
         messenger=messenger,
         parser=parser,
-        exchange=exchange,
+        herder=herder,
     )
 
 

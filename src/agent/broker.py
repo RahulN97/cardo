@@ -1,12 +1,14 @@
 from stubs import (
     Request,
-    NoRequest,
+    NullRequest,
+    GetPnlRequest,
+    GetPnlResponse,
     SubmitTradeRequest,
     SubmitTradeResponse,
 )
 from parser.message_parser import MessageParser
-from interface.messenger import Messenger
-from exchange.client import ExchangeClient
+from fox.messenger import ChatResponse, Messenger
+from alpaca.herder import AlpacaHerder
 
 
 class Broker:
@@ -15,29 +17,35 @@ class Broker:
         name: str,
         messenger: Messenger,
         parser: MessageParser,
-        exchange: ExchangeClient,
+        herder: AlpacaHerder,
     ) -> None:
         self.name: str = name
         self.messenger: Messenger = messenger
         self.parser: MessageParser = parser
-        self.exchange: ExchangeClient = exchange
+        self.herder: AlpacaHerder = herder
 
     @staticmethod
     def _join_messages(*messages) -> str:
-        return " ".join([m for m in messages if m is not None])
+        responses: list[str] = [m for m in messages if m is not None]
+        return " ".join(responses) if responses else None
 
-    def _process_request(self, request: Request, output_text: str | None) -> str | None:
+    def _process_request(
+        self, request: Request, output_text: str | None
+    ) -> ChatResponse | None:
         match request:
-            case NoRequest():
-                return output_text
+            case NullRequest():
+                return None
             case SubmitTradeRequest():
-                trade_resp: SubmitTradeResponse = self.exchange.submit_trade(request)
-                # port_resp: DisplayPortfolioResponse = self.ledger.handle_request(
-                #     request=SaveOrderRequest()
-                # )
-                return self._join_messages(output_text, trade_resp.message)
+                resp: SubmitTradeResponse = self.herder.submit_trade(request)
+            case GetPnlRequest():
+                resp: GetPnlResponse = self.herder.get_pnl(request)
             case _:
                 raise NotImplementedError(f"Cannot handle request: {type(request)}")
+
+        return ChatResponse(
+            message=self._join_messages(output_text, resp.message),
+            img_path=resp.path,
+        )
 
     def run(self) -> None:
         last_message: str = ""
@@ -51,11 +59,11 @@ class Broker:
 
             print(f"New message: {message}")
             request, output_text = self.parser.resolve(message)
-            reply = self._process_request(request, output_text)
+            response = self._process_request(request, output_text)
 
-            if reply is not None:
-                self.messenger.reply(reply)
-                last_message = reply
+            if response is not None:
+                self.messenger.respond(response)
+                last_message = response.message
             else:
                 last_message = message
 

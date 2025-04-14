@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 # Structs #
@@ -47,6 +47,9 @@ class OrderStatus(Enum):
         except KeyError:
             raise ValueError(f"Cannot convert {s} into a valid OrderStatus")
 
+    def to_str(self) -> str:
+        return self.name.lower()
+
 
 class OrderMetadata(BaseModel):
     id: str
@@ -55,19 +58,30 @@ class OrderMetadata(BaseModel):
     status: OrderStatus
 
 
+class MetricWindow(Enum):
+    DAILY = auto()
+    WEEKLY = auto()
+    MONTHLY = auto()
+    TOTAL = auto()
+
+
 # APIs #
 
 
 class Request(BaseModel):
-    pass
-
-
-class NoRequest(Request):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     pass
 
 
 class Response(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     success: bool
+    message: str
+    path: str | None = None
+
+
+class NullRequest(Request):
+    pass
 
 
 class SubmitTradeRequest(Request):
@@ -78,13 +92,12 @@ class SubmitTradeRequest(Request):
 
 
 class SubmitTradeResponse(Response):
-    message: str
     metadata: OrderMetadata | None
 
 
-class DisplayPortfolioRequest(Request):
-    pass
+class GetPnlRequest(Request):
+    window: MetricWindow
 
 
-class DisplayPortfolioResponse(Response):
+class GetPnlResponse(Response):
     pass

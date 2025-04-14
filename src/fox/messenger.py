@@ -1,12 +1,20 @@
 import random
 import time
+from dataclasses import dataclass
 
 from selenium.webdriver import Firefox
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webelement import WebElement
 
-from interface.controller import Controller
+from fox.controller import Controller
+
+
+@dataclass(kw_only=True)
+class ChatResponse:
+    message: str
+    img_path: str | None
+
 
 DEFAULT_LAG: int = 10
 LAG_JITTER: int = 2
@@ -55,6 +63,20 @@ class Messenger:
                 continue
 
         return None
+
+    def respond(self, response: ChatResponse) -> None:
+        if response.img_path is not None:
+            self.send_image(response.img_path)
+        self.reply(response.message)
+
+    def send_image(self, img_path: str) -> None:
+        file_input = self.driver.find_element(By.XPATH, "//input[@type='file']")
+        file_input.send_keys(img_path)
+
+        input_box = self.driver.find_element(By.XPATH, "//div[@aria-label='Message']")
+        input_box.click()
+        self.controller.click_on_element(input_box)
+        self.controller.type_text("")
 
     def reply(self, text: str) -> None:
         input_box = self.driver.find_element(By.XPATH, "//div[@aria-label='Message']")
