@@ -3,13 +3,42 @@ import datetime
 import pandas as pd
 import plotly.graph_objects as go
 
-from stubs import MetricWindow
+from stubs import MetricWindow, OrderMetadata
 
 
 class DataVisualizer:
 
     def __init__(self, broker_name: str) -> None:
         self.broker_name: str = broker_name
+
+    def generate_orders_table(self, orders: list[OrderMetadata]) -> str:
+        input_orders: list[dict[str, str | float]] = [
+            {
+                "timestamp": o.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+                "asset": o.asset,
+                "order type": o.type.to_str(),
+                "order side": o.side.to_str(),
+                "qty": o.qty,
+                "price": f"${o.price:,.2f}",
+            }
+            for o in orders
+        ]
+        df = pd.DataFrame(input_orders)
+
+        fig = go.Figure(
+            data=[
+                go.Table(
+                    header=dict(
+                        values=list(df.columns), fill_color="lightgray", align="left"
+                    ),
+                    cells=dict(values=[df[col] for col in df.columns], align="left"),
+                )
+            ]
+        )
+
+        path: str = f"/tmp/{self.broker_name}-orders.png"
+        fig.write_image(path)
+        return path
 
     def generate_pnl_plot(self, df: pd.DataFrame, window: MetricWindow) -> str:
         fig: go.Figure = go.Figure()
@@ -50,13 +79,13 @@ class DataVisualizer:
             title="PnL Over Time",
             xaxis_title="Timestamp",
             yaxis_title="PnL ($)",
-            template="plotly_white",
+            template="plotly_dark",
             height=500,
             margin=dict(l=40, r=40, t=40, b=80),
             legend=dict(x=0.01, y=0.99),
             xaxis=dict(
                 type="date",
-                tickformat=tickformat,  # Clean, readable
+                tickformat=tickformat,
                 tickangle=45,
                 ticklabelmode="period",
                 tickvals=tickvals,
@@ -69,7 +98,6 @@ class DataVisualizer:
 
         path: str = f"/tmp/{self.broker_name}-pnl.png"
         fig.write_image(path, width=1200, height=600)
-
         return path
 
     def _resolve_tick_format_and_vals(

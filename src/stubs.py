@@ -1,6 +1,8 @@
 from enum import Enum, auto
 from pydantic import BaseModel, ConfigDict
 
+import pandas as pd
+
 
 # Structs #
 
@@ -24,15 +26,15 @@ class OrderType(Enum):
     MARKET = auto()
     LIMIT = auto()
 
-    def to_str(self) -> str:
-        return self.name.lower()
-
     @classmethod
     def from_str(cls, s: str) -> "OrderType":
         try:
             return OrderType[s.upper()]
         except KeyError:
             raise ValueError(f"Cannot convert {s} into a valid OrderType")
+
+    def to_str(self) -> str:
+        return self.name.lower()
 
 
 class OrderStatus(Enum):
@@ -52,10 +54,12 @@ class OrderStatus(Enum):
 
 
 class OrderMetadata(BaseModel):
-    id: str
-    client_order_id: str
-    fill_price: float | None
-    status: OrderStatus
+    timestamp: pd.Timestamp
+    asset: str
+    type: OrderType
+    side: OrderSide
+    qty: float
+    price: float
 
 
 class MetricWindow(Enum):
@@ -92,7 +96,7 @@ class SubmitTradeRequest(Request):
 
 
 class SubmitTradeResponse(Response):
-    metadata: OrderMetadata | None
+    pass
 
 
 class GetPnlRequest(Request):
@@ -100,4 +104,12 @@ class GetPnlRequest(Request):
 
 
 class GetPnlResponse(Response):
+    pass
+
+
+class GetOrdersRequest(Request):
+    window: MetricWindow
+
+
+class GetOrdersResponse(Response):
     pass

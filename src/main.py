@@ -2,6 +2,7 @@ from config.app_config import AppConfig
 from agent.broker import Broker
 from fox.messenger import Messenger
 from alpaca.herder import AlpacaHerder
+from canvas.visualizer import DataVisualizer
 from parser.message_parser import MessageParser
 
 
@@ -13,11 +14,13 @@ def initialize_broker(config: AppConfig) -> Broker:
         lag=config.messenger_lag,
     )
     parser: MessageParser = MessageParser(broker_name=config.broker_name)
+    visualizer: DataVisualizer = DataVisualizer(broker_name=config.broker_name)
     herder: AlpacaHerder = AlpacaHerder(
         broker_name=config.broker_name,
         base_url=config.alpaca_base_url,
         api_key=config.alpaca_api_key,
         api_secret=config.alpaca_api_secret,
+        visualizer=visualizer,
     )
     return Broker(
         name=config.broker_name,
