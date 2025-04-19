@@ -1,0 +1,30 @@
+[tool.poetry]
+name = "cardo"
+version = "0.1.0"
+description = "Your trades are ready!"
+authors = ["Rahul Nambiar <rahbiar@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+selenium = "^4.31.0"
+alpaca-trade-api = "^3.2.0"
+pandas = "^2.2.3"
+pydantic = "^2.11.3"
+python-dotenv = "^1.1.0"
+plotly = "^6.0.1"
+isort = "^6.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+lines_after_imports = 2
+line_length = 120
+force_grid_wrap = 6
+include_trailing_comma = true
+profile = "black"
+src_paths = ["src"]
+known_first_party = ["parser"]

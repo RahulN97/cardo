@@ -1,22 +1,18 @@
+import logging
 import random
 import time
 from dataclasses import dataclass
 
 from selenium.webdriver import Firefox
-from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.remote.webelement import WebElement
 
 from fox.controller import Controller
 
 
-@dataclass(kw_only=True)
-class ChatResponse:
-    message: str
-    img_path: str | None
+logger: logging.Logger = logging.getLogger(__name__)
 
-
-DEFAULT_LAG: int = 10
 LAG_JITTER: int = 2
 MIN_SCAN_TIME: int = 3
 PROFILE_PATH: str = (
@@ -24,9 +20,15 @@ PROFILE_PATH: str = (
 )
 
 
+@dataclass(kw_only=True)
+class ChatResponse:
+    message: str
+    img_path: str | None = None
+
+
 class Messenger:
-    def __init__(self, user: str, profile: str, lag: int | None = None) -> None:
-        self.lag: int = lag or DEFAULT_LAG
+    def __init__(self, user: str, profile: str, lag: int) -> None:
+        self.lag: int = lag
         assert self.lag - LAG_JITTER >= MIN_SCAN_TIME
         self.driver: Firefox = self._build_driver(user=user, profile=profile)
         self.controller: Controller = Controller(self.driver)
@@ -39,7 +41,6 @@ class Messenger:
         driver.execute_script(
             "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
         )
-        self.wait()
         return driver
 
     def wait(self) -> None:
@@ -77,6 +78,7 @@ class Messenger:
         input_box.click()
         self.controller.click_on_element(input_box)
         self.controller.type_text("")
+        logger.info(f"Uploaded image at {img_path}")
 
     def reply(self, text: str) -> None:
         input_box = self.driver.find_element(By.XPATH, "//div[@aria-label='Message']")
@@ -84,7 +86,7 @@ class Messenger:
 
         self.controller.click_on_element(input_box)
         self.controller.type_text(text)
-        print(f"Replied with: {text}")
+        logger.info(f"Replied with: {text}")
 
     def shutdown(self) -> None:
         self.driver.quit()

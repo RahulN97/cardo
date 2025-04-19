@@ -4,23 +4,24 @@ import pandas as pd
 from alpaca_trade_api.entity import Order
 from alpaca_trade_api.rest import REST
 
+from agent.profiles import Profile
+from alpaca.exchange import ORDER_TIMEOUT, Exchange
+from alpaca.ledger import Ledger
+from alpaca.utils import is_mkt_open
+from canvas.visualizer import DataVisualizer
 from stubs import (
-    MetricWindow,
-    OrderStatus,
-    OrderType,
-    OrderSide,
-    OrderMetadata,
     GetOrdersRequest,
     GetOrdersResponse,
     GetPnlRequest,
     GetPnlResponse,
+    MetricWindow,
+    OrderMetadata,
+    OrderSide,
+    OrderStatus,
+    OrderType,
     SubmitTradeRequest,
     SubmitTradeResponse,
 )
-from alpaca.exchange import ORDER_TIMEOUT, Exchange
-from alpaca.ledger import Ledger
-from canvas.visualizer import DataVisualizer
-from alpaca.utils import is_mkt_open
 
 
 MKT_OPEN: datetime.time = datetime.time(9, 30)
@@ -32,15 +33,14 @@ FULL_WINDOW: frozenset[MetricWindow | None] = frozenset((MetricWindow.TOTAL, Non
 class AlpacaHerder:
     def __init__(
         self,
-        broker_name: str,
+        profile: Profile,
         base_url: str,
         api_key: str,
         api_secret: str,
         visualizer: DataVisualizer,
     ) -> None:
-        self.broker_name: str = broker_name
         client: REST = REST(key_id=api_key, secret_key=api_secret, base_url=base_url)
-        self.exchange: Exchange = Exchange(broker_name=broker_name, client=client)
+        self.exchange: Exchange = Exchange(client=client, id=profile.broker_name)
         self.ledger: Ledger = Ledger(client=client)
         self.visualizer: DataVisualizer = visualizer
 
@@ -110,7 +110,7 @@ class AlpacaHerder:
                     f"{action} {order.filled_qty} shares of {order.asset} at {order.filled_avg_price}"
                 )
             case OrderStatus.CANCELED:
-                return f"Order was routed, but wasn't filled before timeout of {ORDER_TIMEOUT} seconds. Canceled"
+                return f"Order was routed, but wasn't filled before the {ORDER_TIMEOUT} second timeout. Canceled"
             case OrderStatus.REJECTED:
                 return (
                     "Order was rejected by exchange - likely due to insufficient funds"
@@ -134,11 +134,8 @@ class AlpacaHerder:
     @staticmethod
     def _root_pnl(df: pd.DataFrame, start: datetime.date) -> pd.DataFrame:
         prev = df[df["timestamp"] < start]
-        if prev.empty:
-            base = 0.0
-        else:
-            base = prev.iloc[-1]["total_pnl"]
+        starting_pnl: float = 0.0 if prev.empty else prev.iloc[-1]["total_pnl"]
 
         df = df[df["timestamp"] >= start]
-        df["total_pnl"] = df["total_pnl"] - base
+        df["total_pnl"] = df["total_pnl"] - starting_pnl
         return df

@@ -6,7 +6,7 @@ class Environment(Enum):
     PROD = auto()
 
     @classmethod
-    def from_str(cls, inp: str | None) -> "Environment":
+    def from_optional_str(cls, inp: str | None) -> "Environment":
         if inp is not None and inp.lower() == "prod":
             return cls.PROD
         return cls.DEV

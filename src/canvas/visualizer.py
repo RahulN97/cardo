@@ -3,13 +3,14 @@ import datetime
 import pandas as pd
 import plotly.graph_objects as go
 
+from agent.profiles import Profile
 from stubs import MetricWindow, OrderMetadata
 
 
 class DataVisualizer:
 
-    def __init__(self, broker_name: str) -> None:
-        self.broker_name: str = broker_name
+    def __init__(self, profile: Profile) -> None:
+        self.path: str = f"/tmp/{profile.broker_name}-{{file_name}}.png"
 
     def generate_orders_table(self, orders: list[OrderMetadata]) -> str:
         input_orders: list[dict[str, str | float]] = [
@@ -36,7 +37,7 @@ class DataVisualizer:
             ]
         )
 
-        path: str = f"/tmp/{self.broker_name}-orders.png"
+        path: str = self.path.format(file_name="orders")
         fig.write_image(path)
         return path
 
@@ -96,7 +97,7 @@ class DataVisualizer:
             ),
         )
 
-        path: str = f"/tmp/{self.broker_name}-pnl.png"
+        path: str = self.path.format(file_name="pnl")
         fig.write_image(path, width=1200, height=600)
         return path
 

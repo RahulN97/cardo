@@ -1,38 +1,53 @@
-from config.app_config import AppConfig
+import logging
+
 from agent.broker import Broker
-from fox.messenger import Messenger
+from agent.profiles import BROKER_NAME_TO_PROFILE, Profile
 from alpaca.herder import AlpacaHerder
 from canvas.visualizer import DataVisualizer
-from parser.message_parser import MessageParser
+from config.app_config import AppConfig
+from errors import BrokerProfileNotImplemented
+from fox.messenger import Messenger
+from resolver.message_resolver import MessageResolver
+
+
+def setup_env(config: AppConfig) -> None:
+    logging.basicConfig(level=config.log_level)
 
 
 def initialize_broker(config: AppConfig) -> Broker:
-    config: AppConfig = AppConfig.from_environment()
+    try:
+        profile: Profile = BROKER_NAME_TO_PROFILE[config.broker_name]
+    except KeyError:
+        raise BrokerProfileNotImplemented(name=config.broker_name)
+
     messenger: Messenger = Messenger(
         user=config.sys_user,
         profile=config.browser_profile,
         lag=config.messenger_lag,
     )
-    parser: MessageParser = MessageParser(broker_name=config.broker_name)
-    visualizer: DataVisualizer = DataVisualizer(broker_name=config.broker_name)
+    resolver: MessageResolver = MessageResolver(profile=profile)
+    visualizer: DataVisualizer = DataVisualizer(profile=profile)
     herder: AlpacaHerder = AlpacaHerder(
-        broker_name=config.broker_name,
+        profile=profile,
         base_url=config.alpaca_base_url,
         api_key=config.alpaca_api_key,
         api_secret=config.alpaca_api_secret,
         visualizer=visualizer,
     )
     return Broker(
-        name=config.broker_name,
+        profile=profile,
         messenger=messenger,
-        parser=parser,
+        resolver=resolver,
         herder=herder,
     )
 
 
 def run() -> None:
     config: AppConfig = AppConfig.from_environment()
+    setup_env(config)
+
     broker: Broker = initialize_broker(config)
+    broker.start()
     try:
         broker.run()
     except KeyboardInterrupt:

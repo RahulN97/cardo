@@ -6,8 +6,8 @@ from alpaca_trade_api.entity import Order
 from alpaca_trade_api.entity_v2 import BarsV2
 from alpaca_trade_api.rest import REST
 
+from alpaca.utils import MKT_CLOSE, MKT_OPEN, is_mkt_open
 from stubs import OrderSide
-from alpaca.utils import is_mkt_open, MKT_CLOSE, MKT_OPEN
 
 
 class Ledger:

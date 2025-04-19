@@ -1,7 +1,7 @@
-from abc import ABC, abstractmethod
 import re
+from abc import ABC, abstractmethod
 
-from stubs import Request, OrderSide, OrderType, SubmitTradeRequest
+from stubs import OrderSide, OrderType, Request, SubmitTradeRequest
 
 
 class Rule(ABC):

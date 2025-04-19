@@ -1,9 +1,8 @@
-from functools import cached_property
-from uuid import uuid4
 import time
+from uuid import uuid4
 
-from alpaca_trade_api.rest import REST
 from alpaca_trade_api.entity import Order
+from alpaca_trade_api.rest import REST
 
 from errors import ErroredOrderState
 from stubs import OrderSide, OrderType
@@ -17,19 +16,15 @@ VALID_ORDER_STATUSES: frozenset[str] = frozenset(("filled", "canceled", "rejecte
 class Exchange:
     def __init__(
         self,
-        broker_name: str,
         client: REST,
+        id: str,
         poll_interval: float = ORDER_POLL_INTERVAL,
         timeout: float = ORDER_TIMEOUT,
     ) -> None:
-        self.broker_name: str = broker_name
         self.client: REST = client
+        self.client_id: str = f"broker-{id}"
         self.poll_interval: float = poll_interval
         self.timeout: float = timeout
-
-    @cached_property
-    def client_id(self) -> str:
-        return f"broker-{self.broker_name}"
 
     def submit_trade(
         self, symbol: str, qty: int, side: OrderSide, type: OrderType
@@ -65,8 +60,9 @@ class Exchange:
         if order.status in VALID_ORDER_STATUSES:
             return order
 
+        order_id: str = order.id
         # unexpected order status. Keep querying order to see if status changes
-        if (order := self._check_status_periodically(order.id)) is not None:
+        if (order := self._check_status_periodically(order_id)) is not None:
             return order
 
         # corrupted order state, cancel it instead

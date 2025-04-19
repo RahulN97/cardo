@@ -1,27 +1,35 @@
+import logging
+
+from agent.profiles import Profile
+from alpaca.herder import AlpacaHerder
+from fox.messenger import ChatResponse, Messenger
+from resolver.message_resolver import MessageResolver
 from stubs import (
-    Request,
-    NullRequest,
+    GetOrdersRequest,
+    GetOrdersResponse,
     GetPnlRequest,
     GetPnlResponse,
+    NullRequest,
+    Request,
     SubmitTradeRequest,
     SubmitTradeResponse,
 )
-from parser.message_parser import MessageParser
-from fox.messenger import ChatResponse, Messenger
-from alpaca.herder import AlpacaHerder
+
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class Broker:
     def __init__(
         self,
-        name: str,
+        profile: Profile,
         messenger: Messenger,
-        parser: MessageParser,
+        resolver: MessageResolver,
         herder: AlpacaHerder,
     ) -> None:
-        self.name: str = name
+        self.profile: Profile = profile
         self.messenger: Messenger = messenger
-        self.parser: MessageParser = parser
+        self.resolver: MessageResolver = resolver
         self.herder: AlpacaHerder = herder
 
     @staticmethod
@@ -32,11 +40,14 @@ class Broker:
     def _process_request(
         self, request: Request, output_text: str | None
     ) -> ChatResponse | None:
+        logger.info(f"Issuing request: {type(request)}")
         match request:
             case NullRequest():
                 return None
             case SubmitTradeRequest():
                 resp: SubmitTradeResponse = self.herder.submit_trade(request)
+            case GetOrdersRequest():
+                resp: GetOrdersResponse = self.herder.get_orders(request)
             case GetPnlRequest():
                 resp: GetPnlResponse = self.herder.get_pnl(request)
             case _:
@@ -47,25 +58,35 @@ class Broker:
             img_path=resp.path,
         )
 
+    def start(self) -> None:
+        self.messenger.wait()
+        self.messenger.respond(
+            response=ChatResponse(message=self.profile.dialogue.init_message)
+        )
+
     def run(self) -> None:
-        last_message: str = ""
+        last_seen: str = self.profile.dialogue.init_message
 
         while True:
             self.messenger.wait()
 
             message: str | None = self.messenger.get_latest_message()
-            if message is None or message == last_message:
+            if message is None or message == last_seen:
                 continue
 
-            print(f"New message: {message}")
-            request, output_text = self.parser.resolve(message)
+            logger.info(f"New message: {message}")
+            request, output_text = self.resolver.match(message)
             response = self._process_request(request, output_text)
 
             if response is not None:
+                logger.info("Issuing chat response")
                 self.messenger.respond(response)
-                last_message = response.message
+                last_seen = response.message
             else:
-                last_message = message
+                last_seen = message
 
     def stop(self) -> None:
+        self.messenger.respond(
+            response=ChatResponse(message=self.profile.dialogue.shutdown_message),
+        )
         self.messenger.shutdown()

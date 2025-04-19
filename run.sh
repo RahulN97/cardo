@@ -1,3 +1,3 @@
 #!/bin/bash
 
-cd src && python -m main
+cd src && poetry run python -m main

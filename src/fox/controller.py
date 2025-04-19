@@ -1,11 +1,11 @@
-from typing import Any, Callable
 import random
 import time
+from typing import Any, Callable
 
 from selenium.webdriver import Firefox
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.remote.webelement import WebElement
 
 
 class Controller:

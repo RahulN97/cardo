@@ -1,7 +1,7 @@
 from enum import Enum, auto
-from pydantic import BaseModel, ConfigDict
 
 import pandas as pd
+from pydantic import BaseModel, ConfigDict
 
 
 # Structs #
@@ -54,6 +54,7 @@ class OrderStatus(Enum):
 
 
 class OrderMetadata(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
     timestamp: pd.Timestamp
     asset: str
     type: OrderType
@@ -73,12 +74,10 @@ class MetricWindow(Enum):
 
 
 class Request(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     pass
 
 
 class Response(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
     success: bool
     message: str
     path: str | None = None
