@@ -4,15 +4,15 @@ from collections import defaultdict, deque
 import pandas as pd
 from alpaca_trade_api.entity import Order
 from alpaca_trade_api.entity_v2 import BarsV2
-from alpaca_trade_api.rest import REST
 
+from alpaca.client import AlpacaClient
 from alpaca.utils import MKT_CLOSE, MKT_OPEN, is_mkt_open
 from stubs import OrderSide
 
 
 class Ledger:
-    def __init__(self, client: REST) -> None:
-        self.client: REST = client
+    def __init__(self, client: AlpacaClient) -> None:
+        self.client: AlpacaClient = client
 
     def get_total_running_pnl(self, filled_orders: list[Order]) -> pd.DataFrame:
         if not filled_orders:
@@ -125,7 +125,6 @@ class Ledger:
                 start=start_ts,
                 end=end_ts,
                 limit=1000,
-                feed="iex",
             )
 
             df: pd.DataFrame = bars.df

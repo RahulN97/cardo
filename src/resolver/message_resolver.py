@@ -1,5 +1,5 @@
 from agent.profiles import Profile
-from agent.rule import Rule
+from agent.rules import Rule
 from stubs import NullRequest, Request
 
 

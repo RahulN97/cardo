@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from agent.rule import Cardo_TradeVOO, Rule
+from agent.rules import Cardo_TradeVOO, Rule
 
 
 @dataclass(kw_only=True, frozen=True)

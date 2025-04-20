@@ -2,13 +2,12 @@ import datetime
 
 import pandas as pd
 from alpaca_trade_api.entity import Order
-from alpaca_trade_api.rest import REST
 
-from agent.profiles import Profile
 from alpaca.exchange import ORDER_TIMEOUT, Exchange
 from alpaca.ledger import Ledger
 from alpaca.utils import is_mkt_open
 from canvas.visualizer import DataVisualizer
+from config.environment import Environment
 from stubs import (
     GetOrdersRequest,
     GetOrdersResponse,
@@ -33,31 +32,20 @@ FULL_WINDOW: frozenset[MetricWindow | None] = frozenset((MetricWindow.TOTAL, Non
 class AlpacaHerder:
     def __init__(
         self,
-        profile: Profile,
-        base_url: str,
-        api_key: str,
-        api_secret: str,
+        env: Environment,
+        exchange: Exchange,
+        ledger: Ledger,
         visualizer: DataVisualizer,
     ) -> None:
-        client: REST = REST(key_id=api_key, secret_key=api_secret, base_url=base_url)
-        self.exchange: Exchange = Exchange(client=client, id=profile.broker_name)
-        self.ledger: Ledger = Ledger(client=client)
+        self.env: Environment = env
+        self.exchange: Exchange = exchange
+        self.ledger: Ledger = ledger
         self.visualizer: DataVisualizer = visualizer
 
     def submit_trade(self, request: SubmitTradeRequest) -> SubmitTradeResponse:
-        if request.type == OrderType.LIMIT:
-            return SubmitTradeResponse(
-                success=False,
-                message="Exchange doesn't support callbacks for limit orders fills.",
-                metadata=None,
-            )
-        now: datetime.datetime = pd.Timestamp.now(tz=datetime.timezone.utc)
-        if not is_mkt_open(now):
-            return SubmitTradeResponse(
-                success=False,
-                message=f"Current time {now} is outside of US market hours",
-                metadata=None,
-            )
+        if (fail_resp := self._validate_trade_request(request)) is not None:
+            return fail_resp
+
         order: Order = self.exchange.submit_trade(
             symbol=request.symbol,
             qty=request.qty,
@@ -78,7 +66,7 @@ class AlpacaHerder:
         order_metas: list[OrderMetadata] = [
             OrderMetadata(
                 timestamp=pd.Timestamp(o.filled_at),
-                asset=o.asset,
+                asset=o.symbol,
                 type=OrderType.from_str(o.order_type),
                 side=OrderSide.from_str(o.order_side),
                 qty=o.filled_qty,
@@ -88,7 +76,7 @@ class AlpacaHerder:
         ]
         path: str = self.visualizer.generate_orders_table(order_metas)
         return GetOrdersResponse(
-            success=True, message="Your orders are ready!", path=path
+            success=True, message="Done fetching filled orders.", path=path
         )
 
     def get_pnl(self, request: GetPnlRequest) -> GetPnlResponse:
@@ -98,7 +86,26 @@ class AlpacaHerder:
             start: datetime.date = self._window_to_start(request.window)
             total_pnl = self._root_pnl(total_pnl, start)
         path: str = self.visualizer.generate_pnl_plot(total_pnl, request.window)
-        return GetPnlResponse(success=True, message="Your PnL's ready!", path=path)
+        return GetPnlResponse(success=True, message="Done calculating PnL.", path=path)
+
+    def _validate_trade_request(self, request: SubmitTradeRequest) -> None:
+        if self.env == Environment.TEST:
+            # pass through all requests to test client
+            return
+
+        if request.type == OrderType.LIMIT:
+            return SubmitTradeResponse(
+                success=False,
+                message="Exchange doesn't support callbacks for limit orders fills.",
+                metadata=None,
+            )
+        now: datetime.datetime = pd.Timestamp.now(tz=datetime.timezone.utc)
+        if not is_mkt_open(now):
+            return SubmitTradeResponse(
+                success=False,
+                message=f"Current time {now} is outside of US market hours",
+                metadata=None,
+            )
 
     @staticmethod
     def _get_trade_message(status: OrderStatus, order: Order) -> str:
@@ -107,7 +114,7 @@ class AlpacaHerder:
                 action: str = "Bought" if order.filled_qty >= 0 else "Sold"
                 return (
                     "Order was successfully filled! "
-                    f"{action} {order.filled_qty} shares of {order.asset} at {order.filled_avg_price}"
+                    f"{action} {order.filled_qty} shares of {order.symbol} at {order.filled_avg_price}"
                 )
             case OrderStatus.CANCELED:
                 return f"Order was routed, but wasn't filled before the {ORDER_TIMEOUT} second timeout. Canceled"

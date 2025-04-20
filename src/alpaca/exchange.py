@@ -2,10 +2,10 @@ import time
 from uuid import uuid4
 
 from alpaca_trade_api.entity import Order
-from alpaca_trade_api.rest import REST
 
 from errors import ErroredOrderState
 from stubs import OrderSide, OrderType
+from alpaca.client import AlpacaClient
 
 
 ORDER_TIMEOUT: float = 5.0
@@ -16,12 +16,12 @@ VALID_ORDER_STATUSES: frozenset[str] = frozenset(("filled", "canceled", "rejecte
 class Exchange:
     def __init__(
         self,
-        client: REST,
+        client: AlpacaClient,
         id: str,
         poll_interval: float = ORDER_POLL_INTERVAL,
         timeout: float = ORDER_TIMEOUT,
     ) -> None:
-        self.client: REST = client
+        self.client: AlpacaClient = client
         self.client_id: str = f"broker-{id}"
         self.poll_interval: float = poll_interval
         self.timeout: float = timeout
