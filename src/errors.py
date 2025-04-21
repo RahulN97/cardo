@@ -17,11 +17,15 @@ class ErroredOrderState(Exception):
         )
 
 
-class BrokerProfileNotImplemented(Exception):
-    ERR_MSG: str = (
-        "Broker name {name} does not exist. "
-        "Need to implement profile, dialogue, and rules for each character"
-    )
+class ContextParsingError(Exception):
+    ERR_MSG: str = "Failed to parse character context: {e}"
 
-    def __init__(self, name: str) -> None:
-        super().__init__(self.ERR_MSG.format(name=name))
+    def __init__(self, e: str) -> None:
+        super().__init__(self.ERR_MSG.format(e=e))
+
+
+class UnexpectedGptResponse(Exception):
+    ERR_MSG: str = "ChatGPT returned an unexpected response: {resp}"
+
+    def __init__(self, resp: str) -> None:
+        super().__init__(self.ERR_MSG.format(resp=resp))

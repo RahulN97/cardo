@@ -111,7 +111,7 @@ class AlpacaHerder:
     def _get_trade_message(status: OrderStatus, order: Order) -> str:
         match status:
             case OrderStatus.FILLED:
-                action: str = "Bought" if order.filled_qty >= 0 else "Sold"
+                action: str = "Bought" if order.side == "buy" else "Sold"
                 return (
                     "Order was successfully filled! "
                     f"{action} {order.filled_qty} shares of {order.symbol} at {order.filled_avg_price}"

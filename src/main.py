@@ -1,23 +1,21 @@
 import logging
 
 from agent.broker import Broker
-from agent.profiles import BROKER_NAME_TO_PROFILE, Profile
 from alpaca.client import AlpacaClient, get_alpaca_client
 from alpaca.exchange import Exchange
 from alpaca.herder import AlpacaHerder
 from alpaca.ledger import Ledger
 from canvas.visualizer import DataVisualizer
 from config.app_config import AppConfig
-from errors import BrokerProfileNotImplemented
 from fox.messenger import Messenger
-from resolver.message_resolver import MessageResolver
+from agent.character import LlmCharacter
 
 
 def setup_env(config: AppConfig) -> None:
     logging.basicConfig(level=config.log_level)
 
 
-def create_herder(config: AppConfig, profile: Profile) -> AlpacaHerder:
+def create_herder(config: AppConfig, name: str) -> AlpacaHerder:
     client: AlpacaClient = get_alpaca_client(
         env=config.env,
         base_url=config.alpaca_base_url,
@@ -25,9 +23,9 @@ def create_herder(config: AppConfig, profile: Profile) -> AlpacaHerder:
         api_secret=config.alpaca_api_secret,
         test_id=config.alpaca_test_id,
     )
-    exchange: Exchange = Exchange(client=client, id=profile.broker_name)
+    exchange: Exchange = Exchange(client=client, name=name)
     ledger: Ledger = Ledger(client=client)
-    visualizer: DataVisualizer = DataVisualizer(profile=profile)
+    visualizer: DataVisualizer = DataVisualizer(name=name)
     return AlpacaHerder(
         env=config.env,
         exchange=exchange,
@@ -37,23 +35,24 @@ def create_herder(config: AppConfig, profile: Profile) -> AlpacaHerder:
 
 
 def initialize_broker(config: AppConfig) -> Broker:
-    try:
-        profile: Profile = BROKER_NAME_TO_PROFILE[config.broker_name]
-    except KeyError:
-        raise BrokerProfileNotImplemented(name=config.broker_name)
-
     messenger: Messenger = Messenger(
         user=config.sys_user,
         profile=config.browser_profile,
         lag=config.messenger_lag,
     )
-    resolver: MessageResolver = MessageResolver(profile=profile)
-    herder: AlpacaHerder = create_herder(config=config, profile=profile)
+    character: LlmCharacter = LlmCharacter(
+        name=config.broker_name,
+        openai_api_key=config.openai_api_key,
+        model=config.openai_model,
+        temperature=config.openai_temperature,
+    )
+    herder: AlpacaHerder = create_herder(config=config, name=config.broker_name)
     return Broker(
-        profile=profile,
+        name=config.broker_name,
         messenger=messenger,
-        resolver=resolver,
+        character=character,
         herder=herder,
+        max_lag=config.max_broker_lag,
     )
 
 

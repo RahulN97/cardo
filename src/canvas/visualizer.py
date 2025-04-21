@@ -3,14 +3,13 @@ import datetime
 import pandas as pd
 import plotly.graph_objects as go
 
-from agent.profiles import Profile
 from stubs import MetricWindow, OrderMetadata
 
 
 class DataVisualizer:
 
-    def __init__(self, profile: Profile) -> None:
-        self.path: str = f"/tmp/{profile.broker_name}-{{file_name}}.png"
+    def __init__(self, name: str) -> None:
+        self.path: str = f"/tmp/{name}-{{file_name}}.png"
 
     def generate_orders_table(self, orders: list[OrderMetadata]) -> str:
         input_orders: list[dict[str, str | float]] = [

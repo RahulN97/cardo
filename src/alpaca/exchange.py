@@ -17,12 +17,12 @@ class Exchange:
     def __init__(
         self,
         client: AlpacaClient,
-        id: str,
+        name: str,
         poll_interval: float = ORDER_POLL_INTERVAL,
         timeout: float = ORDER_TIMEOUT,
     ) -> None:
         self.client: AlpacaClient = client
-        self.client_id: str = f"broker-{id}"
+        self.client_id: str = f"broker-{name}"
         self.poll_interval: float = poll_interval
         self.timeout: float = timeout
 

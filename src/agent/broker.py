@@ -1,9 +1,10 @@
 import logging
 
-from agent.profiles import Profile
+import pandas as pd
+
+from agent.character import LlmCharacter
 from alpaca.herder import AlpacaHerder
 from fox.messenger import ChatResponse, Messenger
-from resolver.message_resolver import MessageResolver
 from stubs import (
     GetOrdersRequest,
     GetOrdersResponse,
@@ -22,15 +23,19 @@ logger: logging.Logger = logging.getLogger(__name__)
 class Broker:
     def __init__(
         self,
-        profile: Profile,
+        name: str,
         messenger: Messenger,
-        resolver: MessageResolver,
+        character: LlmCharacter,
         herder: AlpacaHerder,
+        max_lag: int,
     ) -> None:
-        self.profile: Profile = profile
+        self.name: str = name
         self.messenger: Messenger = messenger
-        self.resolver: MessageResolver = resolver
+        self.character: LlmCharacter = character
         self.herder: AlpacaHerder = herder
+        self.max_lag: int = max_lag
+        self.last_seen: str = ""
+        self.last_sent_ts: pd.Timestamp = pd.Timestamp.now()
 
     @staticmethod
     def _join_messages(*messages) -> str:
@@ -43,7 +48,7 @@ class Broker:
         logger.info(f"Issuing request: {type(request)}")
         match request:
             case NullRequest():
-                return None
+                return ChatResponse(message=output_text) if output_text else None
             case SubmitTradeRequest():
                 resp: SubmitTradeResponse = self.herder.submit_trade(request)
             case GetOrdersRequest():
@@ -59,34 +64,35 @@ class Broker:
         )
 
     def start(self) -> None:
+        logger.info(f"Starting broker {self.name}")
         self.messenger.wait()
-        self.messenger.respond(
-            response=ChatResponse(message=self.profile.dialogue.init_message)
-        )
+        init_message: str = self.character.get_init_message()
+        self.messenger.respond(response=ChatResponse(message=init_message))
+        self.last_seen = init_message
 
     def run(self) -> None:
-        last_seen: str = self.profile.dialogue.init_message
-
         while True:
             self.messenger.wait()
+            now: pd.Timestamp = pd.Timestamp.now()
 
             message: str | None = self.messenger.get_latest_message()
-            if message is None or message == last_seen:
+            if message is not None and message != self.last_seen:
+                logger.info(f"Processing new message: {message}")
+                request, output_text = self.character.resolve(message)
+                response = self._process_request(request, output_text)
+            elif (now - self.last_sent_ts).seconds > self.max_lag:
+                response = ChatResponse(message=self.character.get_random_phrase())
+            else:
                 continue
-
-            logger.info(f"New message: {message}")
-            request, output_text = self.resolver.match(message)
-            response = self._process_request(request, output_text)
 
             if response is not None:
                 logger.info("Issuing chat response")
                 self.messenger.respond(response)
-                last_seen = response.message
+                self.last_seen = response.message
+                self.last_sent_ts = now
             else:
-                last_seen = message
+                self.last_seen = message
 
     def stop(self) -> None:
-        self.messenger.respond(
-            response=ChatResponse(message=self.profile.dialogue.shutdown_message),
-        )
+        logger.info(f"Shutting down broker {self.name}")
         self.messenger.shutdown()

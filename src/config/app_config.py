@@ -26,8 +26,12 @@ class AppConfig:
     alpaca_api_key: str
     alpaca_api_secret: str
     alpaca_test_id: str | None
+    openai_api_key: str
+    openai_model: str = "gpt-4-0125-preview"
+    openai_temperature: float = 1.0
     log_level: str = "INFO"
     messenger_lag: int = 7
+    max_broker_lag: int = 3600
 
     @classmethod
     def from_environment(cls) -> "AppConfig":
@@ -43,8 +47,16 @@ class AppConfig:
             alpaca_api_key=env_get("ALPACA_API_KEY"),
             alpaca_api_secret=env_get("ALPACA_API_SECRET"),
             alpaca_test_id=env_get("ALPACA_TEST_ID", required=env == Environment.TEST),
+            openai_api_key=env_get("OPENAI_API_KEY"),
+            openai_model=env_get("OPENAI_MODEL", required=False) or cls.openai_model,
+            openai_temperature=float(
+                env_get("OPENAI_TEMPERATURE", required=False) or cls.openai_temperature
+            ),
             log_level=env_get("LOG_LEVEL", required=False) or cls.log_level,
             messenger_lag=(
                 int(env_get("MESSENGER_LAG", required=False) or cls.messenger_lag)
+            ),
+            max_broker_lag=(
+                int(env_get("MAX_BROKER_LAG", required=False) or cls.max_broker_lag)
             ),
         )

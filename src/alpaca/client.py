@@ -1,4 +1,5 @@
 import datetime
+import random
 import sqlite3
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -165,7 +166,8 @@ class TestClient(AlpacaClient):
         filled_at: str = now.strftime("%Y%m%d %H:%M:%S")
         status: str = "filled"
         quote: QuoteV2 = self.client.get_latest_quote(symbol=symbol, feed=self.FEED)
-        price: float = quote.ap
+        # random price for testing
+        price: float = quote.ap * (1 + random.uniform(-0.03, 0.03))
 
         with self.conn:
             self.conn.execute(
