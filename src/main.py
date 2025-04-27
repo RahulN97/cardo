@@ -1,6 +1,7 @@
 import logging
 
 from agent.broker import Broker
+from agent.character import LlmCharacter
 from alpaca.client import AlpacaClient, get_alpaca_client
 from alpaca.exchange import Exchange
 from alpaca.herder import AlpacaHerder
@@ -8,7 +9,6 @@ from alpaca.ledger import Ledger
 from canvas.visualizer import DataVisualizer
 from config.app_config import AppConfig
 from fox.messenger import Messenger
-from agent.character import LlmCharacter
 
 
 def setup_env(config: AppConfig) -> None:

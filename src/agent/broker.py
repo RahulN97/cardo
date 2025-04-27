@@ -5,16 +5,7 @@ import pandas as pd
 from agent.character import LlmCharacter
 from alpaca.herder import AlpacaHerder
 from fox.messenger import ChatResponse, Messenger
-from stubs import (
-    GetOrdersRequest,
-    GetOrdersResponse,
-    GetPnlRequest,
-    GetPnlResponse,
-    NullRequest,
-    Request,
-    SubmitTradeRequest,
-    SubmitTradeResponse,
-)
+from stubs import NullRequest, Request, Response
 
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -45,23 +36,21 @@ class Broker:
     def _process_request(
         self, request: Request, output_text: str | None
     ) -> ChatResponse | None:
-        logger.info(f"Issuing request: {type(request)}")
-        match request:
-            case NullRequest():
-                return ChatResponse(message=output_text) if output_text else None
-            case SubmitTradeRequest():
-                resp: SubmitTradeResponse = self.herder.submit_trade(request)
-            case GetOrdersRequest():
-                resp: GetOrdersResponse = self.herder.get_orders(request)
-            case GetPnlRequest():
-                resp: GetPnlResponse = self.herder.get_pnl(request)
-            case _:
-                raise NotImplementedError(f"Cannot handle request: {type(request)}")
+        if isinstance(request, NullRequest):
+            return ChatResponse(message=output_text) if output_text else None
 
-        return ChatResponse(
-            message=self._join_messages(output_text, resp.message),
-            img_path=resp.path,
-        )
+        logger.info(f"Issuing request: {type(request)}")
+        try:
+            resp: Response = self.herder.dispatch_request(request)
+        except Exception as e:
+            logger.error(f"Encountered error: {str(e)}")
+            return ChatResponse(message=self.character.get_error_message)
+        else:
+            logger.info(f"Received response: {type(resp)}")
+            return ChatResponse(
+                message=self._join_messages(output_text, resp.message),
+                img_path=resp.path,
+            )
 
     def start(self) -> None:
         logger.info(f"Starting broker {self.name}")

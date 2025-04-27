@@ -37,6 +37,21 @@ class OrderType(Enum):
         return self.name.lower()
 
 
+class PositionSide(Enum):
+    LONG = auto()
+    SHORT = auto()
+
+    @classmethod
+    def from_str(cls, s: str) -> "PositionSide":
+        try:
+            return PositionSide[s.upper()]
+        except KeyError:
+            raise ValueError(f"Cannot convert {s} into a valid PositionSide")
+
+    def to_str(self) -> str:
+        return self.name.lower()
+
+
 class OrderStatus(Enum):
     FILLED = auto()
     REJECTED = auto()
@@ -61,6 +76,17 @@ class OrderMetadata(BaseModel):
     side: OrderSide
     qty: float
     price: float
+
+
+class PositionMetadata(BaseModel):
+    asset: str
+    qty: float
+    side: PositionSide
+    avg_entry_price: float
+    current_price: float
+    cost_basis: float
+    market_value: float
+    unrealized_pnl: float
 
 
 class MetricWindow(Enum):
@@ -89,7 +115,7 @@ class NullRequest(Request):
 
 class SubmitTradeRequest(Request):
     symbol: str
-    qty: int
+    qty: float
     side: OrderSide
     type: OrderType
 
@@ -111,4 +137,12 @@ class GetOrdersRequest(Request):
 
 
 class GetOrdersResponse(Response):
+    pass
+
+
+class GetPortfolioRequest(Request):
+    pass
+
+
+class GetPortfolioResponse(Response):
     pass

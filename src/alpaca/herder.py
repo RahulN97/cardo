@@ -13,20 +13,19 @@ from stubs import (
     GetOrdersResponse,
     GetPnlRequest,
     GetPnlResponse,
+    GetPortfolioRequest,
+    GetPortfolioResponse,
     MetricWindow,
     OrderMetadata,
     OrderSide,
     OrderStatus,
     OrderType,
+    PositionMetadata,
+    Request,
+    Response,
     SubmitTradeRequest,
     SubmitTradeResponse,
 )
-
-
-MKT_OPEN: datetime.time = datetime.time(9, 30)
-MKT_CLOSE: datetime.time = datetime.time(16, 0)
-
-FULL_WINDOW: frozenset[MetricWindow | None] = frozenset((MetricWindow.TOTAL, None))
 
 
 class AlpacaHerder:
@@ -41,6 +40,19 @@ class AlpacaHerder:
         self.exchange: Exchange = exchange
         self.ledger: Ledger = ledger
         self.visualizer: DataVisualizer = visualizer
+
+    def dispatch_request(self, request: Request) -> Response:
+        match request:
+            case SubmitTradeRequest():
+                return self.submit_trade(request)
+            case GetOrdersRequest():
+                return self.get_orders(request)
+            case GetPnlRequest():
+                return self.get_pnl(request)
+            case GetPortfolioRequest():
+                return self.get_portfolio(request)
+            case _:
+                raise NotImplementedError(f"Cannot handle request: {type(request)}")
 
     def submit_trade(self, request: SubmitTradeRequest) -> SubmitTradeResponse:
         if (fail_resp := self._validate_trade_request(request)) is not None:
@@ -60,17 +72,17 @@ class AlpacaHerder:
 
     def get_orders(self, request: GetOrdersRequest) -> GetOrdersResponse:
         filled_orders: list[Order] = self.exchange.get_filled_orders()
-        if request.window not in FULL_WINDOW:
+        if request.window is not None and request.window != MetricWindow.TOTAL:
             start: datetime.date = self._window_to_start(request.window)
             filled_orders = [o for o in filled_orders if o.filled_at >= start]
         order_metas: list[OrderMetadata] = [
             OrderMetadata(
-                timestamp=pd.Timestamp(o.filled_at),
+                timestamp=o.filled_at,
                 asset=o.symbol,
-                type=OrderType.from_str(o.order_type),
-                side=OrderSide.from_str(o.order_side),
-                qty=o.filled_qty,
-                price=o.filled_avg_price,
+                type=OrderType.from_str(o.type),
+                side=OrderSide.from_str(o.side),
+                qty=float(o.filled_qty),
+                price=float(o.filled_avg_price),
             )
             for o in filled_orders
         ]
@@ -79,12 +91,23 @@ class AlpacaHerder:
             success=True, message="Done fetching filled orders.", path=path
         )
 
+    def get_portfolio(self, request: GetPortfolioRequest) -> GetPortfolioResponse:
+        filled_orders: list[Order] = self.exchange.get_filled_orders()
+        positions: list[PositionMetadata] = self.ledger.get_positions(filled_orders)
+        path: str = self.visualizer.generate_portfolio_table(positions)
+        return GetPortfolioResponse(
+            success=True, message="Done fetching portfolio positions.", path=path
+        )
+
     def get_pnl(self, request: GetPnlRequest) -> GetPnlResponse:
         filled_orders: list[Order] = self.exchange.get_filled_orders()
         total_pnl: pd.DataFrame = self.ledger.get_total_running_pnl(filled_orders)
-        if request.window not in FULL_WINDOW:
+        if request.window is not None and request.window != MetricWindow.TOTAL:
             start: datetime.date = self._window_to_start(request.window)
             total_pnl = self._root_pnl(total_pnl, start)
+        import pdb
+
+        pdb.set_trace()
         path: str = self.visualizer.generate_pnl_plot(total_pnl, request.window)
         return GetPnlResponse(success=True, message="Done calculating PnL.", path=path)
 
@@ -96,14 +119,14 @@ class AlpacaHerder:
         if request.type == OrderType.LIMIT:
             return SubmitTradeResponse(
                 success=False,
-                message="Exchange doesn't support callbacks for limit orders fills.",
+                message="Failed to route trade: Exchange doesn't support callbacks for fills on limit orders.",
                 metadata=None,
             )
         now: datetime.datetime = pd.Timestamp.now(tz=datetime.timezone.utc)
         if not is_mkt_open(now):
             return SubmitTradeResponse(
                 success=False,
-                message=f"Current time {now} is outside of US market hours",
+                message=f"Failed to route trade: Current time {now} is outside of US market hours",
                 metadata=None,
             )
 
@@ -114,7 +137,7 @@ class AlpacaHerder:
                 action: str = "Bought" if order.side == "buy" else "Sold"
                 return (
                     "Order was successfully filled! "
-                    f"{action} {order.filled_qty} shares of {order.symbol} at {order.filled_avg_price}"
+                    f"{action} {order.filled_qty} shares of {order.symbol} at {float(order.filled_avg_price):.2f}"
                 )
             case OrderStatus.CANCELED:
                 return f"Order was routed, but wasn't filled before the {ORDER_TIMEOUT} second timeout. Canceled"

@@ -35,6 +35,9 @@ class AlpacaClient(ABC):
             feed=self.FEED,
         )
 
+    def get_quote(self, symbol: str) -> QuoteV2:
+        return self.client.get_latest_quote(symbol=symbol, feed=self.FEED)
+
     @abstractmethod
     def get_order(self, id: str) -> Order:
         pass
@@ -106,7 +109,7 @@ class TestClient(AlpacaClient):
             filled_at TEXT
         )
     """
-    SUBMIT_RECORD: str = """
+    SUBMIT_ORDER: str = """
         INSERT OR REPLACE INTO orders (
             id,
             client_order_id,
@@ -163,7 +166,7 @@ class TestClient(AlpacaClient):
     ) -> Order:
         order_id: str = str(uuid4())
         now: pd.Timestamp = pd.Timestamp.now(tz=datetime.timezone.utc)
-        filled_at: str = now.strftime("%Y%m%d %H:%M:%S")
+        filled_at: str = now.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
         status: str = "filled"
         quote: QuoteV2 = self.client.get_latest_quote(symbol=symbol, feed=self.FEED)
         # random price for testing
@@ -171,7 +174,7 @@ class TestClient(AlpacaClient):
 
         with self.conn:
             self.conn.execute(
-                self.SUBMIT_RECORD,
+                self.SUBMIT_ORDER,
                 (
                     order_id,
                     client_order_id,

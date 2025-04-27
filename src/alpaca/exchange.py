@@ -3,9 +3,9 @@ from uuid import uuid4
 
 from alpaca_trade_api.entity import Order
 
+from alpaca.client import AlpacaClient
 from errors import ErroredOrderState
 from stubs import OrderSide, OrderType
-from alpaca.client import AlpacaClient
 
 
 ORDER_TIMEOUT: float = 5.0
@@ -27,7 +27,7 @@ class Exchange:
         self.timeout: float = timeout
 
     def submit_trade(
-        self, symbol: str, qty: int, side: OrderSide, type: OrderType
+        self, symbol: str, qty: float, side: OrderSide, type: OrderType
     ) -> Order:
         return self._try_submit_order(
             symbol=symbol, qty=qty, side=side.to_str(), type=type.to_str()
@@ -47,7 +47,7 @@ class Exchange:
             time_waited += self.poll_interval
             time.sleep(self.poll_interval)
 
-    def _try_submit_order(self, symbol: str, qty: int, side: str, type: str) -> Order:
+    def _try_submit_order(self, symbol: str, qty: float, side: str, type: str) -> Order:
         client_order_id: str = f"{self.client_id}-{str(uuid4())}"
         order: Order = self.client.submit_order(
             symbol=symbol,

@@ -7,14 +7,14 @@ from openai.types.chat import ChatCompletion
 
 from errors import ContextParsingError, UnexpectedGptResponse
 from stubs import (
-    Request,
-    NullRequest,
     GetOrdersRequest,
     GetPnlRequest,
-    SubmitTradeRequest,
+    MetricWindow,
+    NullRequest,
     OrderSide,
     OrderType,
-    MetricWindow,
+    Request,
+    SubmitTradeRequest,
 )
 
 
@@ -31,6 +31,7 @@ ALLOWED_EVAL_OBJECTS: dict[str, type] = {
 PROMPT_RESOLVE: str = "RESOLVE"
 PROMPT_INIT_MESSAGE: str = "INIT"
 PROMPT_RAND_MESSAGE: str = "RAND"
+PROMPT_ERR_MESSAGE: str = "ERR"
 
 CONTEXT_ROOT: Path = Path.cwd().parent / "context"
 SYSTEM_CONTEXT: str = f"""
@@ -48,9 +49,11 @@ You are a character named {{name}}. You only respond to these commands:
             - MetricWindow: has options {[x.name for x in MetricWindow]}
     - text: commentary based on input and context details
 2. {PROMPT_INIT_MESSAGE} -> NullRequest()|text
-   - text: character-specific greeting. State your name as well
+    - text: character-specific greeting. State your name as well
 3. {PROMPT_RAND_MESSAGE} -> NullRequest()|text
-   - text: random character-specific phrase. Make this a truly random phrase that is unique
+    - text: random character-specific phrase. Make this a truly random phrase that is unique
+4. {PROMPT_ERR_MESSAGE} -> NullRequest()|text
+    - text: character-specific message stating some error occurred
 
 Context details:
 {{details}}
@@ -144,4 +147,8 @@ class LlmCharacter:
 
     def get_random_phrase(self) -> str:
         output: GptOutput = self._prompt_gpt(PROMPT_RAND_MESSAGE)
+        return output.text
+
+    def get_error_message(self) -> str:
+        output: GptOutput = self._prompt_gpt(PROMPT_ERR_MESSAGE)
         return output.text
